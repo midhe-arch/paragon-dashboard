@@ -1,0 +1,196 @@
+import streamlit as st
+import pandas as pd
+import base64
+
+def get_base64_avatar():
+    """Returns a fake base64 avatar string (a placeholder icon)."""
+    # A generic base64 string for a user icon
+    avatar_b64 = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OTYgNTEyIj48cGF0aCBkPSJNMjQ4IDhhMjQ4IDI0OCAwIDEgMSAyNDggMjQ4QTI0OCAyNDggMCAwIDEgMjQ4IDh6bTAtMjQ4QTE0NCAxNDQgMCAxIDAgMTQ0IDEwNGExNDQgMTQ0IDAgMCAwIDE0NCAxNDR6bTAgNjRhMjcyIDI3MiAwIDAgMCAyNDQgMTI4bTE3IDUyQTI0MCAyNDAgMCAwIDEgNDgxIDM5M2ExMjggMTI4IDAgMCAwLTI4My0xNTdsLTE5IDM1YTI0MCAyNDAgMCAwIDEgMjQ4IDI0OHpNMjQ4IDMxMmEyODggMjg4IDAgMCAxLTI0NCAxNjRhMjkyIDI5MiAwIDAgMS04LTI5MWMxMjEtMTQ4IDIwMi0yNDcgMjYwLTI0N3oyNzIgMjcyIDAgMCAxLTI0NCAxNjR6TTQwNCA1MTJhMjg4IDI4OCAwIDAgMSAxMDggNjRIMjg4IDI4OCAwIDAgMS0xMDggNjR6Ii8+PC9zdmc+"
+    return avatar_b64
+
+def color_coded_badge(text, status):
+    """Creates a colorful badge based on status or priority."""
+    status_colors = {
+        "Open": "#dbeafe", # Blue
+        "In Progress": "#fef3c7", # Yellow/Orange
+        "On Hold": "#e5e7eb", # Gray
+        "Closed": "#d1fae5", # Green
+        "High": "#fee2e2", # Red (priority)
+        "Medium": "#fef3c7", # Yellow (priority)
+        "Low": "#d1fae5", # Green (priority)
+    }
+    
+    text_colors = {
+        "Open": "#1e40af", # Dark Blue
+        "In Progress": "#92400e", # Dark Orange
+        "On Hold": "#4b5563", # Dark Gray
+        "Closed": "#065f46", # Dark Green
+        "High": "#991b1b", # Dark Red
+        "Medium": "#92400e", # Dark Orange
+        "Low": "#065f46", # Dark Green
+    }
+
+    bg_color = status_colors.get(status, "#f3f4f6")
+    txt_color = text_colors.get(status, "#111827")
+
+    return f"""
+    <div style="
+        background-color: {bg_color};
+        color: {txt_color};
+        padding: 4px 12px;
+        border-radius: 16px;
+        font-size: 14px;
+        font-weight: 500;
+        display: inline-block;
+        white-space: nowrap;
+    ">
+        {text}
+    </div>
+    """
+
+def render_status_card(title, value, icon, color):
+    """Creates a stylized status card for the top row."""
+    icon_map = {
+        "open": "📂",
+        "progress": "⏳",
+        "hold": "⏸️",
+        "closed": "✅"
+    }
+    
+    st.markdown(f"""
+    <div style="
+        background-color: white;
+        padding: 24px;
+        border-radius: 20px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        border: 1px solid #e5e7eb;
+        margin-bottom: 20px;
+    ">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div style="font-size: 16px; font-weight: 600; color: #6b7280;">{title}</div>
+            <div style="font-size: 24px;">{icon_map.get(icon, '❓')}</div>
+        </div>
+        <div style="font-size: 36px; font-weight: 700; color: {color};">{value}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+def render_requests_tab():
+    """Loads data and renders the entire Requests Dashboard tab."""
+    st.set_page_config(layout="wide") # Important for this design
+
+    # LOAD THE DATA (the 'toys')
+    try:
+        # Crucial: Use the EXACT filename you provided
+        df = pd.read_csv("UpdateD Spreadsheet - Sheet1.csv")
+    except FileNotFoundError:
+        st.error("Error: Could not find the file 'UpdateD Spreadsheet - Sheet1.csv'. Make sure it's in the main folder of your GitHub repository.")
+        return
+
+    # Process data counts
+    status_counts = df['Status'].value_counts()
+    
+    # --- RENDER UI ---
+
+    # Main Title
+    st.markdown("<h1 style='color: #111827; font-weight: 700; margin-bottom: 24px;'>Requests Dashboard</h1>", unsafe_allow_html=True)
+
+    # 1. TOP CARDS (Status Summary)
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        render_status_card("Open Requests", status_counts.get("Open", 0), "open", "#2563eb") # Blue
+    with col2:
+        render_status_card("In Progress", status_counts.get("In Progress", 0), "progress", "#f59e0b") # Orange
+    with col3:
+        render_status_card("On Hold", status_counts.get("On Hold", 0), "hold", "#9ca3af") # Gray
+    with col4:
+        render_status_card("Closed Requests", status_counts.get("Closed", 0), "closed", "#10b981") # Green
+
+    # Add spacing
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # 2. FILTER & SEARCH BAR (Top row of the table section)
+    # This section makes the app interactive, not just a static picture.
+    
+    row2_col1, row2_col2, row2_col3 = st.columns([1, 4, 1])
+    
+    with row2_col1:
+        st.write("") # Just for spacing
+    with row2_col2:
+        search_query = st.text_input("Search requests by Subject or ID...", placeholder="e.g., Computer Problem or 1001")
+    with row2_col3:
+        # Create a dropdown for status filtering
+        status_options = ["All"] + list(df['Status'].unique())
+        status_filter = st.selectbox("Filter by Status", status_options)
+
+    # Add a simple button as shown in the design
+    _, center_col, _ = st.columns([2,1,2])
+    with center_col:
+        st.button("Filter & Sort", key="filter_btn")
+
+    # 3. APPLY FILTERS
+    filtered_df = df
+    if search_query:
+        filtered_df = filtered_df[
+            filtered_df['Subject'].str.contains(search_query, case=False, na=False) |
+            filtered_df['Request ID'].astype(str).str.contains(search_query, case=False)
+        ]
+    if status_filter != "All":
+        filtered_df = filtered_df[filtered_df['Status'] == status_filter]
+
+    # 4. REQUESTS LIST (The main content area)
+    st.markdown("<h2 style='color: #1f2937; font-weight: 600; margin-bottom: 16px;'>Requests</h2>", unsafe_allow_html=True)
+
+    # Create visual 'rows' for each request to match the Canva design
+    if filtered_df.empty:
+        st.info("No requests found matching your filters.")
+    else:
+        # Loop through each row of our "toy box"
+        for index, row in filtered_df.iterrows():
+            with st.container():
+                st.markdown("""
+                    <style>
+                        .element-container:has(> .stMarkdown > .request-card) {
+                            margin-bottom: 16px;
+                        }
+                    </style>
+                """, unsafe_allow_html=True)
+                
+                # We use internal columns for layout within each request card
+                c1, c2, c3, c4, c5, c6 = st.columns([1.5, 1, 4, 2, 1.5, 2], gap="small")
+                
+                # Column 1: STATUS
+                with c1:
+                    st.markdown(f'<div class="request-card" style="margin-top: 10px;">{color_coded_badge(row["Status"], row["Status"])}</div>', unsafe_allow_html=True)
+                
+                # Column 2: ID
+                with c2:
+                    st.markdown(f'<div style="color: #6b7280; font-weight: 500; font-size: 15px; margin-top: 12px;">{row["Request ID"]}</div>', unsafe_allow_html=True)
+                
+                # Column 3: SUBJECT
+                with c3:
+                    st.markdown(f'<div style="color: #111827; font-weight: 600; font-size: 16px; margin-top: 10px;">{row["Subject"]}</div>', unsafe_allow_html=True)
+                
+                # Column 4: TYPE
+                with c4:
+                    st.markdown(f'<div style="color: #1f2937; font-weight: 500; font-size: 15px; margin-top: 12px;">{row["Request Type"]}</div>', unsafe_allow_html=True)
+                
+                # Column 5: PRIORITY
+                with c5:
+                    # Treat Priority like status, give it colorful badges
+                    st.markdown(f'<div style="margin-top: 10px;">{color_coded_badge(row["Priority"], row["Priority"])}</div>', unsafe_allow_html=True)
+                
+                # Column 6: ASSIGNEE (with placeholder icon)
+                with c6:
+                    avatar_b64 = get_base64_avatar()
+                    st.markdown(f"""
+                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
+                        <img src="{avatar_b64}" width="36" height="36" style="border-radius: 50%;" alt="Assignee Avatar">
+                        <div style="color: #1f2937; font-weight: 500; font-size: 15px;">{row["Assigned To"]}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                # A separating line below each request
+                st.markdown("<hr style='border: 0.5px solid #e5e7eb; margin-top: 4px; margin-bottom: 4px;'>", unsafe_allow_html=True)
+
+# Important: This is a function definition, it doesn't run until called from the main app.
